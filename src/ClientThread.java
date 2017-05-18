@@ -1,6 +1,8 @@
 import data.Params;
 import data.ServerSong;
 
+import java.io.IOException;
+import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +10,7 @@ import java.util.List;
 /**
  * Created by Alex on 02.05.2017.
  */
-public class ClientThread {
+public class ClientThread implements Runnable{
     private Connector connection;
 
     //Map<ServerSong, Params> songParamsMap = new HashMap<>();
@@ -59,7 +61,7 @@ public class ClientThread {
         System.out.println(averageDeltaRMS);
         System.out.println(maxDeltaRMS);
 
-        ServerSong song = new ServerSong(name,author,false);
+        ServerSong song = new ServerSong(name,author);
         Params params = new Params(RMS,MFCC,averageRMS,averageDeltaRMS,maxDeltaRMS);
         songList.add(song);
         paramsList.add(params);
@@ -109,7 +111,6 @@ public class ClientThread {
             double result[] = network.calculate(input);
             songList.get(i).setEmotional(result[0]);
             songList.get(i).setRhythm(result[1]);
-            songList.get(i).setAnalyzed(true);
         }
 
         double prefRhythm = calculatePreference("rhythm");
@@ -143,6 +144,88 @@ public class ClientThread {
             e.printStackTrace();
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void getFeedback() {
+        String name = connection.receive();
+        String author = connection.receive();
+        double feedEmotional = connection.receiveDouble();
+        double feedRhythm = connection.receiveDouble();
+        try {
+            DBWorker.connect();
+            ServerSong song = DBWorker.getSong(name,author);
+            if (song==null) {
+                System.out.println("No such song in DB!");
+            } else {
+                song.setEmotional((feedEmotional+song.getEmotional())/2);
+                song.setRhythm((feedRhythm+song.getRhythm())/2);
+                DBWorker.updateSong(song);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                DBWorker.closeDB();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void loadTest(){
+        String name = connection.receive();
+        String author = connection.receive();
+        Params params = getParams(name,author,songList,paramsList);
+        if (params!=null) {
+            try {
+                DBWorker.connect();
+                DBWorker.loadTest(name,author,params);
+                DBWorker.closeDB();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        } else {
+            System.out.println("No such song!");
+        }
+    }
+
+    private Params getParams(String name, String author, List<ServerSong> songList, List<Params> paramsList){
+        for (int i = 0; i < songList.size(); i++) {
+            if ((songList.get(i).getName().compareTo(name)==0)&&(songList.get(i).getArtist().compareTo(author)==0)){
+                return paramsList.get(i);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void run() {
+        while (connection.haveClient){
+            try {
+                String line = connection.receiveCommand();
+                if (line==null) break;
+                System.out.println(line);
+                switch (line.toUpperCase()){
+                    case "TEST" : test(); break;
+                    case "LOADTEST": loadTest(); break;
+                    case "LOADFEEDBACK" : getFeedback(); break;
+                    case "QUIT"  : connection.closeConnection(); break;
+                    default: break;
+                }
+            } catch (SocketException e){
+                System.out.println("Connection reset");
+            } catch (IOException e) {
+                //e.printStackTrace();
+                break;
+            }
         }
     }
 

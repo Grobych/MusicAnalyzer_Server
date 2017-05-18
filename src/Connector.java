@@ -1,48 +1,26 @@
 import com.google.gson.Gson;
 
 import java.io.*;
-import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
  * Created by Alex on 21.04.2017.
  */
 public class Connector {
-    ServerSocket serverSocket;
-    Socket clientSocket;
+    private Socket clientSocket;
     boolean haveClient = false;
-    InetAddress IPServer, IPClient;
-    final int port = 19999;
-    Gson gson;
-    BufferedReader in;
-    PrintWriter out;
-    ObjectInputStream objectIn;
-    ObjectOutputStream objectOut;
+    private Gson gson;
+    private BufferedReader in;
+    private PrintWriter out;
 
-    public Connector(){
-        try {
-            serverSocket = new ServerSocket(port);
-            IPServer = InetAddress.getLocalHost();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void waitClient()
+    public void setSocket(Socket socket)
     {
         try {
-            System.out.print("Waiting for a client...");
-            clientSocket= serverSocket.accept();
-            IPClient =  clientSocket.getInetAddress();
-
+            clientSocket = socket;
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             out = new PrintWriter(clientSocket.getOutputStream(),true);
-            objectIn = new ObjectInputStream(clientSocket.getInputStream());
-            objectOut = new ObjectOutputStream(clientSocket.getOutputStream());
             gson = new Gson();
             haveClient=true;
-            System.out.println("Client connected");
         } catch (IOException e) {
             System.out.println("Can't accept");
             System.exit(-1);

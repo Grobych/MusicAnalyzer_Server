@@ -111,9 +111,6 @@ public class NeuronNetwork {
         }
     }
 
-
-
-
     public double[] normalizeInput(double[] RMS, double[] MFCC, double averageRMS, double averageDeltaRMS, double maxDelataRMS){
         double result[] = new double[218];
         NormalizeArray normRMS = new NormalizeArray();
@@ -122,8 +119,8 @@ public class NeuronNetwork {
         RMS = normRMS.process(RMS);
 
         NormalizeArray normMFCC = new NormalizeArray();
-        normRMS.setNormalizedHigh(1);
-        normRMS.setNormalizedLow(-1);
+        normMFCC.setNormalizedHigh(1);
+        normMFCC.setNormalizedLow(-1);
         MFCC = normRMS.process(MFCC);
 
         result[215] = averageRMS/32655;

@@ -1,3 +1,5 @@
+import com.google.gson.Gson;
+import data.Params;
 import data.ServerSong;
 
 import java.sql.*;
@@ -49,29 +51,49 @@ public class DBWorker {
         }
     }
 
-    public static void addSong(ServerSong song) throws SQLException {
-        addSong(song.getName(),song.getArtist(),song.isAnalyzed(),song.getRhythm(),song.getEmotional());
+    public static int getSongID(String name, String author){
+        String command = new String("select id from songs where name=\""+name+"\" and author=\""+author+"\";");
+        try {
+            resSet = statmt.executeQuery(command);
+            if (resSet.next()){
+                return resSet.getInt("id");
+            } else return -1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
     }
-
-    public static void addSong(String name, String author, boolean isAnalyzed, double rhythm, double emotional) throws SQLException {
+    public static void addSong(ServerSong song) throws SQLException {
+        addSong(song.getName(),song.getArtist(),song.getRhythm(),song.getEmotional());
+    }
+    public static void addSong(String name, String author, double rhythm, double emotional) throws SQLException {
         if (checkSong(name,author)) return;
         String command = new String("INSERT INTO 'songs' ('name', 'author', 'isAnalyzed', 'rhythm', 'emotional') " +
-                "VALUES (\""+name+"\", \""+author+"\", "+((isAnalyzed)? 1 : 0)+", "+rhythm+", "+emotional+"); ");
+                "VALUES (\""+name+"\", \""+author+"\", "+rhythm+", "+emotional+"); ");
         //System.out.println(command);
         statmt.execute(command);
     }
-
+    public static ServerSong getSong(String name, String author) throws SQLException {
+        String command = new String("SELECT * FROM 'songs' WHERE name = \""+name+"\" and author = \""+author+"\";");
+        resSet = statmt.executeQuery(command);
+        if (resSet.next()){
+            return new ServerSong(
+                    resSet.getString("name"),
+                    resSet.getString("author"),
+                    resSet.getDouble("rhythm"),
+                    resSet.getDouble("emotional"));
+        } else return null;
+    }
     public static boolean checkSong(String name, String author) throws SQLException {
         String command = new String("SELECT * FROM 'songs' WHERE name = \""+name+"\" and author = \""+author+"\";");
-        //System.out.println(command);
+        System.out.println(command);
         resSet = statmt.executeQuery(command);
         if (resSet.next()) return true;
         else return false;
     }
-
     public static void updateSong(String name, String author, double rhythm, double emotional) throws SQLException {
         if (!checkSong(name,author)){
-            addSong(name,author,true,rhythm,emotional);
+            addSong(name,author,rhythm,emotional);
         } else {
             String command = new String("update 'songs'\n" +
                     "set rhythm="+rhythm+", emotional="+emotional+"\n" +
@@ -80,11 +102,56 @@ public class DBWorker {
             statmt.execute(command);
         }
     }
-
     public static void updateSong(ServerSong song) throws SQLException {
         updateSong(song.getName(),song.getArtist(),song.getRhythm(),song.getEmotional());
     }
-
+    public static void loadArray(int songID, String column, String JSON){
+        try {
+            if (checkTest(songID)){
+                String command = new String("update 'test' set "+column+"="+JSON+" where songID="+songID+";");
+                statmt.execute(command);
+            } else {
+                //String command = new String("insert")
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void loadTest(String name, String author, Params params){
+        try {
+            if (checkSong(name,author)){
+                int songID = getSongID(name, author);
+                if (songID!=-1) loadTest(params,songID);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void loadTest(Params params, int songID){
+        try {
+            if (!checkTest(songID)){
+                Gson gson = new Gson();
+                String command = new String("insert into 'test' ('songID','averageRMS','averageDRMS','maxDRMS','RMS','MFCC')"+
+                "values ("+songID+","
+                        +params.getAverageRMS()+","
+                        +params.getAverageDeltaRMS()+","
+                        +params.getMaxDeltaRMS()+",\""
+                        +gson.toJson(params.getRMS())+"\",\""
+                        +gson.toJson(params.getMFCC())+"\");");
+                System.out.println(command);
+                statmt.execute(command);
+            } else return;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public static boolean checkTest(int songID) throws SQLException {
+        String command = new String("select * from test where songID="+songID+";");
+        System.out.println(command);
+        resSet = statmt.executeQuery(command);
+        if (resSet.next()) return true;
+        else return false;
+    }
     public static List<ServerSong> getSimilarSong(double rhythm, double emotional, double k) throws SQLException {
         List<ServerSong> result = new ArrayList<>();
         String command = new String("select * from songs\n" +
@@ -94,7 +161,6 @@ public class DBWorker {
             result.add(new ServerSong(
                     resSet.getString("name"),
                     resSet.getString("author"),
-                    resSet.getBoolean("isAnalyzed"),
                     resSet.getDouble("rhythm"),
                     resSet.getDouble("emotional")
             ));

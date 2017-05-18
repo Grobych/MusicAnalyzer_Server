@@ -9,25 +9,18 @@ public class ServerSong {
     private String name;
     private String artist;
 
-    private boolean isAnalyzed;
-
     private double rhythm;
     private double emotional;
 
-    public ServerSong(String name, String author, boolean isAnalyzed, double rhythm, double emotional) {
+    public ServerSong(String name, String author, double rhythm, double emotional) {
         setName(name);
         setArtist(author);
         setEmotional(emotional);
         setRhythm(rhythm);
-        setAnalyzed(isAnalyzed);
     }
-    public ServerSong(String name, String artist, boolean isAnalyzed){
+    public ServerSong(String name, String artist){
         setName(name);
         setArtist(artist);
-        setAnalyzed(isAnalyzed);
-    }
-    public boolean isAnalyzed() {
-        return isAnalyzed;
     }
 
     public String getArtist() {
@@ -72,7 +65,4 @@ public class ServerSong {
         }
     }
 
-    public void setAnalyzed(boolean analyzed) {
-        isAnalyzed = analyzed;
-    }
 }
